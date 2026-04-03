@@ -2,14 +2,38 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import './App.css'
 
+// ==================== LOGIN ====================
+function Login({ onLogin }) {
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (password === 'admin' || password === 'michael') {
+      localStorage.setItem('wt_user', 'true')
+      onLogin(true)
+    } else {
+      setError('Invalid code')
+    }
+  }
+  
+  return (
+    <div className="login-container">
+      <div className="login-box">
+        <h1>Watchtower</h1>
+        <form onSubmit={handleSubmit}>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Access code" className="login-input" />
+          <button type="submit" className="login-btn">Enter</button>
+        </form>
+        {error && <span className="login-error">{error}</span>}
+      </div>
+    </div>
+  )
+}
+
 // ==================== COMPONENTS ====================
-const SectionCard = ({ title, icon, children, delay = 0 }) => (
-  <motion.div 
-    className="section-card"
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay }}
-  >
+const SectionCard = ({ title, icon, children }) => (
+  <motion.div className="section-card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
     <div className="section-header">
       <span className="section-icon">{icon}</span>
       <h2>{title}</h2>
@@ -18,398 +42,352 @@ const SectionCard = ({ title, icon, children, delay = 0 }) => (
   </motion.div>
 )
 
-const StatBadge = ({ label, value, status }) => (
-  <div className="stat-badge">
-    <span className="stat-label">{label}</span>
-    <span className="stat-value">{value}</span>
-    {status && <span className={`stat-status ${status}`}>{status}</span>}
-  </div>
-)
-
-const ProjectRow = ({ name, url, status, lastDeploy, branch }) => (
-  <div className="project-row">
-    <span className={`status-dot ${status}`} />
-    <span className="project-name">{name}</span>
-    <span className="project-branch">{branch || 'main'}</span>
-    <span className="project-deploy">{lastDeploy}</span>
-  </div>
-)
-
-const RepoRow = ({ name, description, language, stars, url, forks }) => (
-  <a href={url} target="_blank" className="repo-row">
-    <div className="repo-top">
-      <span className="repo-name">{name}</span>
-      {stars > 0 && <span className="repo-stars">⭐ {stars}</span>}
-      {forks > 0 && <span className="repo-forks">⑂ {forks}</span>}
-    </div>
-    <span className="repo-desc">{description || 'No description'}</span>
-    {language && <span className="repo-lang">{language}</span>}
-  </a>
-)
-
-const DeploymentCard = ({ name, status, createdAt, state, branch, commit }) => (
-  <div className="deployment-card">
-    <div className="deploy-header">
-      <h3>{name}</h3>
-      <span className={`deploy-status ${state || status}`}>{state || status}</span>
-    </div>
-    <div className="deploy-meta">
-      <span>Branch: {branch || 'main'}</span>
-      <span>{commit?.substring(0, 7) || 'N/A'}</span>
-      <span>{new Date(createdAt).toLocaleDateString()}</span>
-    </div>
-  </div>
-)
-
-const MonitoringCard = ({ name, icon, description, status, onSetup, error }) => {
-  const isConfigured = status === 'configured' || status === true
+const AlertBanner = ({ alerts }) => {
+  if (!alerts || alerts.length === 0) return null
   return (
-    <div className="monitoring-card">
-      <span className="monitor-icon">{icon}</span>
-      <h4>{name}</h4>
-      <p>{description}</p>
-      <span className={`monitor-status ${isConfigured ? 'configured' : error ? 'error' : 'pending'}`}>
-        {isConfigured ? 'Connected' : error ? 'Error' : 'Not configured'}
-      </span>
-      <button className="setup-btn" onClick={onSetup}>
-        {isConfigured ? 'Configure' : 'Setup'}
-      </button>
+    <div className="alert-banner">
+      {alerts.map((alert, i) => (
+        <div key={i} className={`alert-item ${alert.severity}`}>
+          <span className="alert-icon">
+            {alert.severity === 'high' ? '🚨' : alert.severity === 'medium' ? '⚠️' : 'ℹ️'}
+          </span>
+          <span className="alert-message">{alert.message}</span>
+        </div>
+      ))}
     </div>
   )
 }
 
-const IntegrationCard = ({ name, icon, description, connected, onSetup }) => (
-  <div className="integration-card">
-    <div className="integration-header">
-      <div className="integration-icon">{icon}</div>
-      <div className="integration-info">
-        <h4>{name}</h4>
-        <p>{description}</p>
-      </div>
+const StatBadge = ({ label, value }) => (
+  <div className="stat-badge">
+    <span className="stat-label">{label}</span>
+    <span className="stat-value">{value}</span>
+  </div>
+)
+
+const LeadCard = ({ lead, onQualify, onRemove }) => (
+  <div className="lead-card">
+    <div className="lead-header">
+      <span className="lead-name">{lead.name}</span>
+      <span className={`lead-score ${lead.score >= 7 ? 'hot' : lead.score >= 4 ? 'warm' : 'cold'}`}>
+        {lead.score}/10
+      </span>
     </div>
-    <div className="integration-status">
-      <span className={`status-indicator ${connected ? 'connected' : 'disconnected'}`} />
-      <span>{connected ? 'Connected' : 'Not connected'}</span>
+    <div className="lead-details">
+      {lead.location && <span className="lead-meta">📍 {lead.location}</span>}
+      {lead.website && <span className="lead-meta">🌐 {lead.website}</span>}
+      {lead.phone && <span className="lead-meta">📞 {lead.phone}</span>}
+    </div>
+    <div className="lead-notes">{lead.notes}</div>
+    <div className="lead-actions">
+      <button onClick={() => onQualify(lead.id)} className="lead-action-btn">✓ Qualify</button>
+      <button onClick={() => onRemove(lead.id)} className="lead-action-btn remove">✕</button>
     </div>
   </div>
 )
 
+const WorkflowCard = ({ workflow, onRun }) => (
+  <div className="workflow-card">
+    <div className="workflow-header">
+      <span className="workflow-icon">{workflow.icon}</span>
+      <span className="workflow-name">{workflow.name}</span>
+    </div>
+    <p className="workflow-desc">{workflow.description}</p>
+    <div className="workflow-agents">
+      {workflow.agents.map((agent, i) => (
+        <span key={i} className="agent-tag">{agent}</span>
+      ))}
+    </div>
+    <button onClick={() => onRun(workflow.id)} className="workflow-run-btn">
+      ▶ Run Workflow
+    </button>
+  </div>
+)
+
+const TaskRow = ({ task }) => (
+  <div className="task-row">
+    <span className="task-title">{task.title}</span>
+    <span className={`task-state ${task.state?.name?.toLowerCase()}`}>{task.state?.name}</span>
+  </div>
+)
+
+function formatTimeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
 // ==================== MAIN APP ====================
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [leads, setLeads] = useState([])
+  const [workflowsRunning, setWorkflowsRunning] = useState({})
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // Workflow definitions
+  const workflows = [
+    {
+      id: 'research_leads',
+      name: 'Research Leads',
+      icon: '🔍',
+      description: 'Find businesses in a niche and location',
+      agents: ['Research Agent'],
+      prompt: 'Find 5 yoga studios in Cape Town, South Africa. For each provide: name, location, website, phone if available.'
+    },
+    {
+      id: 'research_qualify',
+      name: 'Research + Qualify',
+      icon: '🎯',
+      description: 'Find leads and score them for fit',
+      agents: ['Research Agent', 'Qualify Agent'],
+      prompt: 'Find 5瑜伽 studios in Cape Town, then score each on: budget potential (1-10), tech fit (1-10), timeline (1-10)'
+    },
+    {
+      id: 'full_outreach',
+      name: 'Full Pipeline',
+      icon: '🚀',
+      description: 'Research, qualify, and draft outreach',
+      agents: ['Research Agent', 'Qualify Agent', 'Outreach Agent'],
+      prompt: 'Find 5 businesses, qualify top 3, draft outreach email for each'
+    },
+    {
+      id: 'competitor_analysis',
+      name: 'Competitor Analysis',
+      icon: '⚔️',
+      description: 'Research a competitor in detail',
+      agents: ['Research Agent', 'Analysis Agent'],
+      prompt: 'Research a competitor. Find: what they do, pricing, strengths, weaknesses, recent news'
+    }
+  ]
+
+  // Pre-loaded leads from research
+  const sampleLeads = [
+    { id: 1, name: 'Yoga Loft', location: 'Kloof St & Waterkant St, Cape Town', website: 'yogaloft.co.za', phone: '', score: 7, notes: 'Premium studio, likely mid-high budget' },
+    { id: 2, name: 'Yo Yoga', location: 'Observatory, Cape Town', website: 'yoyoga.co.za', phone: '083 690 7967', score: 6, notes: 'Heated yoga, modern setup' },
+    { id: 3, name: 'Yoga Life', location: 'Waterkant St, Cape Town', website: 'yogalife.co.za', phone: '021 418 2884', score: 8, notes: 'Established, good potential' },
+  ]
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        const res = await fetch('/api/data')
-        if (!res.ok) throw new Error('API error')
-        const apiData = await res.json()
-        setData(apiData)
-        setError(null)
-      } catch (e) {
-        console.error('API fetch failed:', e)
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    fetchData()
+    if (localStorage.getItem('wt_user')) setIsLoggedIn(true)
+    setLeads(sampleLeads)
   }, [])
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/data')
+      if (!res.ok) throw new Error('API error')
+      setData(await res.json())
+      setError(null)
+    } catch (e) { setError(e.message) }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchData()
+      const interval = setInterval(fetchData, 60000)
+      return () => clearInterval(interval)
+    }
+  }, [isLoggedIn])
+
+  const runWorkflow = async (workflowId) => {
+    const workflow = workflows.find(w => w.id === workflowId)
+    if (!workflow) return
+    
+    setWorkflowsRunning(prev => ({ ...prev, [workflowId]: true }))
+    
+    // Simulate workflow - in production this would call API
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    setWorkflowsRunning(prev => ({ ...prev, [workflowId]: false }))
+    
+    // Add sample lead results
+    if (workflowId === 'research_leads' || workflowId === 'research_qualify') {
+      const newLeads = [
+        { id: Date.now(), name: 'New Business Found', location: 'Cape Town', website: 'example.com', score: 5, notes: 'Discovered via research' }
+      ]
+      setLeads(prev => [...newLeads, ...prev])
+    }
+  }
+
+  const removeLead = (id) => {
+    setLeads(prev => prev.filter(l => l.id !== id))
+  }
+
+  const qualifyLead = (id) => {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, qualified: true } : l))
+  }
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
-    { id: 'deployments', label: 'Deployments', icon: '🚀' },
-    { id: 'code', label: 'Code', icon: '🐙' },
-    { id: 'communications', label: 'Comm', icon: '📧' },
-    { id: 'monitoring', label: 'Monitoring', icon: '🔍' },
-    { id: 'integrations', label: 'Integrations', icon: '🔗' },
+    { id: 'agents', label: 'Agents', icon: '🤖' },
+    { id: 'leads', label: 'Leads', icon: '🎯' },
+    { id: 'projects', label: 'Projects', icon: '📁' },
+    { id: 'tasks', label: 'Tasks', icon: '📋' },
   ]
+
+  if (!isLoggedIn) return <Login onLogin={setIsLoggedIn} />
 
   return (
     <div className="watchtower">
       <div className="bg-pattern" />
-      
       <div className="container">
-        <motion.header 
-          className="header"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.header className="header" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           <h1>Watchtower</h1>
-          <p>Your mission control center</p>
+          <p>Autonomous Agent System</p>
         </motion.header>
 
-        <nav className="tabs">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <span>{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+        {data?.autonomous?.alerts && data.autonomous.alerts.length > 0 && (
+          <AlertBanner alerts={data.autonomous.alerts} />
+        )}
 
-        {loading ? (
-          <div className="loading">
-            <div className="spinner" />
-            <p>Loading Watchtower...</p>
+        <div className="controls">
+          <nav className="tabs">
+            {tabs.map(tab => (
+              <button key={tab.id} className={`tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
+                <span>{tab.icon}</span> {tab.label}
+              </button>
+            ))}
+          </nav>
+          <div className="controls-right">
+            <button className="refresh-btn" onClick={fetchData}>🔄</button>
+            <button className="logout-btn" onClick={() => { localStorage.removeItem('wt_user'); setIsLoggedIn(false) }}>🔒</button>
           </div>
-        ) : error ? (
-          <div className="error">{error}</div>
-        ) : (
+        </div>
+
+        {loading ? <div className="loading"><div className="spinner" />Loading...</div> : error ? <div className="error">{error}</div> : (
           <div className="content">
-            {/* OVERVIEW TAB */}
+            {/* OVERVIEW */}
             {activeTab === 'overview' && data && (
               <div className="overview-grid">
-                <SectionCard title="Vercel Projects" icon="▲" delay={0}>
-                  {data.vercel?.projects?.slice(0, 5).map(p => (
-                    <ProjectRow 
-                      key={p.id} 
-                      name={p.name} 
-                      url={p.url} 
-                      status="ready" 
-                      lastDeploy={new Date(p.updatedAt || Date.now()).toLocaleDateString()}
-                      branch={p.branch}
-                    />
-                  ))}
-                  {data.vercel?.total > 5 && (
-                    <div className="view-more">
-                      +{data.vercel.total - 5} more projects
-                    </div>
-                  )}
+                <SectionCard title="System Health" icon="💚">
+                  <div className="health-grid">
+                    <div className="health-item healthy"><span className="health-num">{data.vercel?.stats?.healthy || 0}</span><span className="health-label">Healthy</span></div>
+                    <div className="health-item error"><span className="health-num">{data.vercel?.stats?.error || 0}</span><span className="health-label">Errors</span></div>
+                    <div className="health-item building"><span className="health-num">{leads.length}</span><span className="health-label">Leads</span></div>
+                  </div>
                 </SectionCard>
-                
-                <SectionCard title="GitHub Repositories" icon="🐙" delay={0.1}>
-                  {data.github?.repos?.slice(0, 5).map(r => (
-                    <RepoRow 
-                      key={r.id}
-                      name={r.name}
-                      description={r.description}
-                      language={r.language}
-                      stars={r.stargazers_count}
-                      forks={r.forks_count}
-                      url={r.html_url}
-                    />
-                  ))}
-                </SectionCard>
-                
-                <SectionCard title="Quick Stats" icon="📈" delay={0.2}>
+                <SectionCard title="Quick Stats" icon="📈">
                   <div className="stats-grid">
-                    <StatBadge label="Projects" value={data.vercel?.total || 0} status={data.vercel?.connected ? "ready" : "pending"} />
-                    <StatBadge label="Repos" value={data.github?.total || 0} status={data.github?.connected ? "ready" : "pending"} />
-                    <StatBadge label="Monitoring" value={Object.values(data.monitoring || {}).filter(m => m.configured).length} status="ready" />
-                    <StatBadge label="APIs" value={Object.values(data.integrations || {}).filter(i => i.configured).length} status="ready" />
+                    <StatBadge label="Projects" value={data.vercel?.total || 0} />
+                    <StatBadge label="Repos" value={data.github?.total || 0} />
+                    <StatBadge label="Tasks" value={data.linear?.openCount || 0} />
+                    <StatBadge label="Leads" value={leads.length} />
                   </div>
                 </SectionCard>
-                
-                <SectionCard title="System Status" icon="⚡" delay={0.3}>
-                  <div className="system-status">
-                    <div className="status-item">
-                      <span className="status-label">Vercel</span>
-                      <span className={`status-value ${data.vercel?.connected ? 'ready' : 'disconnected'}`}>
-                        {data.vercel?.connected ? 'Connected' : 'Not configured'}
-                      </span>
-                    </div>
-                    <div className="status-item">
-                      <span className="status-label">GitHub</span>
-                      <span className={`status-value ${data.github?.connected ? 'ready' : 'disconnected'}`}>
-                        {data.github?.connected ? 'Connected' : 'Not configured'}
-                      </span>
-                    </div>
-                    <div className="status-item">
-                      <span className="status-label">Gmail</span>
-                      <span className={`status-value ${data.gmail?.connected ? 'ready' : 'disconnected'}`}>
-                        {data.gmail?.connected ? `${data.gmail.count} messages` : 'Not configured'}
-                      </span>
-                    </div>
-                    <div className="status-item">
-                      <span className="status-label">Calendar</span>
-                      <span className={`status-value ${data.calendar?.connected ? 'ready' : 'disconnected'}`}>
-                        {data.calendar?.connected ? `${data.calendar.count} events` : 'Not configured'}
-                      </span>
-                    </div>
+                <SectionCard title="Recent Activity" icon="🚀">
+                  <div className="deployments-list">
+                    {(data.vercel?.deployments || []).slice(0, 4).map((d, i) => (
+                      <div key={i} className="deployment-item">
+                        <span className={`deploy-state ${d.state}`}>{d.state}</span>
+                        <span className="deploy-name">{d.projectName}</span>
+                        <span className="deploy-time">{formatTimeAgo(new Date(d.created))}</span>
+                      </div>
+                    ))}
+                  </div>
+                </SectionCard>
+                <SectionCard title="Today's Tasks" icon="📋">
+                  <div className="tasks-list">
+                    {(data.linear?.issues || []).slice(0, 4).map((t, i) => <TaskRow key={i} task={t} />)}
+                    {(!data.linear?.issues || data.linear.issues.length === 0) && <div className="empty-state">No tasks</div>}
                   </div>
                 </SectionCard>
               </div>
             )}
 
-            {/* DEPLOYMENTS TAB */}
-            {activeTab === 'deployments' && data && (
-              <SectionCard title="All Projects & Deployments" icon="🚀" delay={0}>
-                {data.vercel?.projects?.map(p => (
-                  <DeploymentCard 
-                    key={p.id}
-                    name={p.name}
-                    state="ready"
-                    createdAt={p.updatedAt}
-                    branch={p.branch}
-                  />
-                ))}
-                {(!data.vercel?.projects || data.vercel.projects.length === 0) && (
-                  <p className="empty-state">No projects found. Configure VERCEL_TOKEN to see deployments.</p>
+            {/* AGENTS TAB */}
+            {activeTab === 'agents' && (
+              <SectionCard title="Agent Workflows" icon="🤖">
+                <p className="section-desc">Run multi-agent workflows to automate research, qualification, and outreach</p>
+                <div className="workflows-grid">
+                  {workflows.map(w => (
+                    <WorkflowCard 
+                      key={w.id} 
+                      workflow={w} 
+                      onRun={runWorkflow}
+                    />
+                  ))}
+                </div>
+                {Object.values(workflowsRunning).some(v => v) && (
+                  <div className="workflow-status">
+                    ⏳ Running workflow...
+                  </div>
                 )}
               </SectionCard>
             )}
 
-            {/* CODE TAB */}
-            {activeTab === 'code' && data && (
-              <SectionCard title="GitHub Repositories" icon="🐙" delay={0}>
-                {data.github?.repos?.map(r => (
-                  <RepoRow 
-                    key={r.id}
-                    name={r.name}
-                    description={r.description}
-                    language={r.language}
-                    stars={r.stargazers_count}
-                    forks={r.forks_count}
-                    url={r.html_url}
-                  />
-                ))}
-                {(!data.github?.repos || data.github.repos.length === 0) && (
-                  <p className="empty-state">No repositories found. Configure GITHUB_TOKEN to see repos.</p>
-                )}
-              </SectionCard>
-            )}
-
-            {/* COMMUNICATIONS TAB */}
-            {activeTab === 'communications' && data && (
-              <div className="comm-grid">
-                <SectionCard title="Gmail" icon="📧" delay={0}>
-                  <div className="email-list">
-                    {data.gmail?.messages?.length > 0 ? (
-                      data.gmail.messages.slice(0, 5).map(m => (
-                        <div key={m.id} className="email-item">
-                          <div className="email-from">{m.from}</div>
-                          <div className="email-subject">{m.subject}</div>
-                          <div className="email-snippet">{m.snippet?.substring(0, 80)}...</div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="empty-state">
-                        {data.gmail?.connected ? 'No recent emails' : 'Configure GOOGLE_REFRESH_TOKEN to see emails'}
-                      </p>
-                    )}
-                  </div>
-                </SectionCard>
-                <SectionCard title="Calendar" icon="📅" delay={0.1}>
-                  <div className="calendar-list">
-                    {data.calendar?.events?.length > 0 ? (
-                      data.calendar.events.slice(0, 5).map(e => (
-                        <div key={e.id} className="calendar-item">
-                          <div className="event-title">{e.summary}</div>
-                          <div className="event-time">🕐 {e.start}</div>
-                          {e.location && <div className="event-location">📍 {e.location}</div>}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="empty-state">
-                        {data.calendar?.connected ? 'No upcoming events this week' : 'Configure GOOGLE_REFRESH_TOKEN to see calendar'}
-                      </p>
-                    )}
-                  </div>
-                </SectionCard>
-              </div>
-            )}
-
-            {/* MONITORING TAB */}
-            {activeTab === 'monitoring' && data && (
-              <SectionCard title="Monitoring & Analytics" icon="🔍" delay={0}>
-                <div className="monitoring-grid">
-                  <MonitoringCard 
-                    name="Sentry" 
-                    icon="🐛"
-                    description="Error tracking & performance monitoring"
-                    status={data.monitoring?.sentry?.configured}
-                    error={data.monitoring?.sentry?.error}
-                    onSetup={() => alert('Add SENTRY_DSN to Watchtower API environment variables')}
-                  />
-                  <MonitoringCard 
-                    name="PostHog" 
-                    icon="📈"
-                    description="Product analytics, funnels, session recordings"
-                    status={data.monitoring?.posthog?.configured}
-                    error={data.monitoring?.posthog?.error}
-                    onSetup={() => alert('Add POSTHOG_API_KEY and POSTHOG_PROJECT_ID to Watchtower API environment variables')}
-                  />
-                  <MonitoringCard 
-                    name="Plausible" 
-                    icon="📊"
-                    description="Privacy-friendly website analytics"
-                    status={data.monitoring?.plausible?.configured}
-                    error={data.monitoring?.plausible?.error}
-                    onSetup={() => alert('Add PLAUSIBLE_SITE_ID to Watchtower API environment variables')}
-                  />
-                  <MonitoringCard 
-                    name="UptimeRobot" 
-                    icon="⏰"
-                    description="Website uptime monitoring & alerts"
-                    status={data.monitoring?.uptimerobot?.configured}
-                    error={data.monitoring?.uptimerobot?.error}
-                    onSetup={() => alert('Add UPTIMEROBOT_API_KEY to Watchtower API environment variables')}
-                  />
+            {/* LEADS TAB */}
+            {activeTab === 'leads' && (
+              <SectionCard title="Lead Pipeline" icon="🎯">
+                <div className="leads-stats">
+                  <span className="lead-stat hot">Hot: {leads.filter(l => l.score >= 7).length}</span>
+                  <span className="lead-stat warm">Warm: {leads.filter(l => l.score >= 4 && l.score < 7).length}</span>
+                  <span className="lead-stat cold">Cold: {leads.filter(l => l.score < 4).length}</span>
+                </div>
+                <div className="leads-list">
+                  {leads.map(lead => (
+                    <LeadCard key={lead.id} lead={lead} onQualify={qualifyLead} onRemove={removeLead} />
+                  ))}
+                  {leads.length === 0 && <div className="empty-state">No leads yet. Run a research workflow to find leads.</div>}
                 </div>
               </SectionCard>
             )}
 
-            {/* INTEGRATIONS TAB */}
-            {activeTab === 'integrations' && data && (
-              <SectionCard title="Additional Integrations" icon="🔗" delay={0}>
-                <div className="integrations-grid">
-                  <IntegrationCard 
-                    name="Slack" 
-                    icon="💬"
-                    description="Team messaging & alerts"
-                    connected={!!data.integrations?.slack}
-                    onSetup={() => alert('Add SLACK_WEBHOOK to Watchtower API environment variables')}
-                  />
-                  <IntegrationCard 
-                    name="Discord" 
-                    icon="🎮"
-                    description="Server & community platform"
-                    connected={!!data.integrations?.discord}
-                    onSetup={() => alert('Add DISCORD_WEBHOOK to Watchtower API environment variables')}
-                  />
-                  <IntegrationCard 
-                    name="Notion" 
-                    icon="📝"
-                    description="Knowledge base & docs"
-                    connected={data.integrations?.notion?.configured}
-                    onSetup={() => alert('Add NOTION_API_KEY and NOTION_DATABASE_ID to Watchtower API environment variables')}
-                  />
-                  <IntegrationCard 
-                    name="Linear" 
-                    icon="📋"
-                    description="Issue tracking & project management"
-                    connected={data.integrations?.linear?.configured}
-                    onSetup={() => alert('Add LINEAR_API_KEY to Watchtower API environment variables')}
-                  />
-                  <IntegrationCard 
-                    name="Stripe" 
-                    icon="💳"
-                    description="Payments & billing"
-                    connected={data.integrations?.stripe?.configured}
-                    onSetup={() => alert('Add STRIPE_API_KEY to Watchtower API environment variables')}
-                  />
+            {/* PROJECTS TAB */}
+            {activeTab === 'projects' && data && (
+              <SectionCard title="All Projects" icon="📁">
+                <div className="all-projects-list">
+                  {filterBySearch(data.vercel?.projects || []).map(p => (
+                    <div key={p.id} className="project-full-row">
+                      <div className="project-main">
+                        <span className="project-name">{p.name}</span>
+                        <span className="project-meta">{p.framework || 'unknown'}</span>
+                      </div>
+                      <div className="project-actions">
+                        {p.latestDeployments?.[0]?.url && <a href={p.latestDeployments[0].url} target="_blank" className="project-link">Live</a>}
+                        <a href={`https://vercel.com/dashboard?project=${p.id}`} target="_blank" className="project-link">Dashboard</a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
+
+            {/* TASKS TAB */}
+            {activeTab === 'tasks' && data && (
+              <SectionCard title="Linear Tasks" icon="📋">
+                <div className="tasks-full-list">
+                  {(data.linear?.issues || []).map(t => (
+                    <div key={t.id} className="task-full-row">
+                      <span className="task-title">{t.title}</span>
+                      <span className={`task-state ${t.state?.name?.toLowerCase()}`}>{t.state?.name}</span>
+                    </div>
+                  ))}
+                  {(!data.linear?.issues || data.linear.issues.length === 0) && <div className="empty-state">No tasks or Linear not configured</div>}
                 </div>
               </SectionCard>
             )}
           </div>
         )}
 
-        <footer className="footer">
-          <p>Watchtower v1.0 • Configure API keys in your Vercel project settings</p>
-        </footer>
+        <footer className="footer">Watchtower v4.0 • Agent System • <a href="https://github.com/mikewithoutthemechanics/watchtower">GitHub</a></footer>
       </div>
     </div>
   )
+  
+  function filterBySearch(items) {
+    if (!searchTerm || !items) return items
+    return items.filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()))
+  }
 }
 
 export default App
